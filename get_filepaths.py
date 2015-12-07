@@ -19,6 +19,7 @@ def get_filepaths():
 	for root, dirs, files in os.walk("/Volumes/scsherm/congress/data"):
 		for file in files:
 			if file.endswith(".txt"):
+				print os.path.join(root, file)
 				txt_file_list.append(os.path.join(root, file))
 	return txt_file_list
 
