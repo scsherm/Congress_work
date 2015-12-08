@@ -32,4 +32,4 @@ def get_filepaths():
 
 
 if __name__ == '__main__':
-	txt_file_list = get_filepaths()
+	full_file_list = get_filepaths()

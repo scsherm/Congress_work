@@ -25,4 +25,4 @@ def group_texts():
 	# return bill_txt_df
 
 if __name__ == '__main__':
-	bill_txt_df = to_df()
+	txt_list = group_texts()
