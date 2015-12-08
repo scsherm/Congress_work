@@ -1,17 +1,16 @@
 import os
 
 def get_filepaths_votes():
-	txt_file_list = []
+	vote_file_list = []
 	#scan subfolders for txt files
-	for root, dirs, files in os.walk("/Volumes/scsherm/congress/data"):
-		print os.path.abspath(root) 
-		#Check to see if in votes folder
-		if os.path.abspath(root).__contains__('/votes'):
-			print 'yes' #verify
-			for file in files:
-				if file.endswith(".json"):
-					txt_file_list.append(os.path.join(root, file))
-	return txt_file_list
+	for congr_num in os.listdir("/Volumes/scsherm/congress/data"):
+		if not congr_num.startswith('.'):
+			for root, dirs, files in os.walk("/Volumes/scsherm/congress/data/" + congr_num + "/votes"):
+				for file in files:
+					if file.endswith(".json"):
+						print os.path.join(root, file)
+						vote_file_list.append(os.path.join(root, file))
+	return vote_file_list
 
 def get_filepaths():
 	full_file_list = []
