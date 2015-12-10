@@ -1,16 +1,18 @@
 import os
 
-def get_filepaths_votes():
-	vote_file_list = []
+def get_filepaths_type(datatype = 'votes'):
+	datatype_file_list = []
 	#scan subfolders for txt files
 	for congr_num in os.listdir("/Volumes/scsherm/congress/data"):
 		if not congr_num.startswith('.'):
-			for root, dirs, files in os.walk("/Volumes/scsherm/congress/data/" + congr_num + "/votes"):
+			for root, dirs, files in os.walk("/Volumes/scsherm/congress/data/" + congr_num + "/" + datatype):
 				for file in files:
-					if file.endswith(".json"):
+					if file.endswith("data.json"):
 						print os.path.join(root, file)
-						vote_file_list.append(os.path.join(root, file))
-	return vote_file_list
+						datatype_file_list.append(os.path.join(root, file))
+	return datatype_file_list
+
+
 
 def get_filepaths():
 	full_file_list = []
