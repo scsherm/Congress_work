@@ -3,6 +3,7 @@ import numpy as np
 from group_texts import group_texts
 
 def bills_to_df(txt_dict):
+	'''pulls the txt data into a pandas dataframe'''
 	bills_df = pd.DataFrame.from_dict(txt_dict, orient = 'index')
 	return bills_df
 

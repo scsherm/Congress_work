@@ -52,8 +52,6 @@ def get_votes_data(votes_df):
 	votes_df.drop('unknown', axis = 1, inplace = True)
 	votes_df = pd.concat([votes_df,pd.get_dummies(votes_df.requires)], axis = 1)
 	votes_df.drop('3/5', axis = 1, inplace = True)
-	#votes_df = pd.concat([votes_df,pd.get_dummies(votes_df.result)], axis = 1)
-	#votes_df.drop('Motion to Reconsider Rejected', axis = 1, inplace = True)
 	votes_df = pd.concat([votes_df,pd.get_dummies(votes_df.session)], axis = 1)
 	votes_df.drop('2002', axis = 1, inplace = True)
 	return votes_df

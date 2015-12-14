@@ -1,6 +1,7 @@
 import os
 
 def get_filepaths_type(datatype = 'votes'):
+	'''gets the filepaths for either votes or bills json data'''
 	datatype_file_list = []
 	#scan subfolders for txt files
 	for congr_num in os.listdir("/Volumes/scsherm/congress/data"):
@@ -15,8 +16,8 @@ def get_filepaths_type(datatype = 'votes'):
 
 
 def get_filepaths():
+	'''get full filepaths for txt files of bills grouped by the bill_id folder'''
 	full_file_list = []
-
 	#scan subfolders for txt files
 	for root, dirs, files in os.walk("/Volumes/scsherm/congress/data"):
 		if os.path.abspath(root).endswith(('/hconres', '/hjres', '/hr', '/hres', '/s', '/sconres', '/sjres', '/sres')):
