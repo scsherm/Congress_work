@@ -18,26 +18,35 @@ from sklearn.metrics import precision_score
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import roc_curve
 from sklearn.metrics import roc_auc_score
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd 
 from nltk.corpus import stopwords
+import cPickle as pickle
 from votes_df_clean import get_precent_party, get_bill_id, get_votes_data, group_by_chamber_latest
+from bills_df_json_clean import to_df, get_party_dict, get_sponsor_party, get_new_attributes
 
 def join_dfs(votes_df, bills_df, bills_json_df):
+	'''joins the matrices to get back the bills data with the response as True or False
+	for whether the bill was voted on'''
+	v = votes_df.iloc[:,np.where(votes_df.columns.values == 'is_amendment')[0][0]:]
 	v['vote'] = [1 for i in range(len(v))]
+	infile = open('bills_tfidf_sparse.pkl', 'rb')
+	bill_sparse = pickle.load(infile)
+	bill_dense_tfidf = pd.DataFrame(bill_sparse.todense())
+	bill_dense_tfidf.set_index(bills_df.index, inplace = True)
 	all_bills = bill_dense_tfidf.join(bills_json_df, how = 'left')
 	all_bills = all_bills.join(v.vote, how = 'left')
-	all_bill.vote.fillna(0, inplace = True)
-	y = all_bill.pop('vote')
+	all_bills.vote.fillna(0, inplace = True)
+	y = all_bills.pop('vote')
 	y.fillna(0, inplace = True)
 	y = y.values
-	all_bill.fillna(-1, inplace = True)
-	all_bill.pop('vote')
-	X = all_bill.values.astype(np.float64)
+	all_bills.fillna(-1, inplace = True)
+	all_bills.pop('vote')
+	X = all_bills.values.astype(np.float64)
 	return X, y
 
 def clf_model(X, y, model = RandomForestClassifier(n_estimators = 5000, n_jobs = -1, oob_score = True)):
+	'''runs a classifier model for the given model (with paramters)'''
 	print 'running {}...'.format(model)
 	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 	clf = model
@@ -65,11 +74,12 @@ def clf_model(X, y, model = RandomForestClassifier(n_estimators = 5000, n_jobs =
 	return clf, recall, AUC, precision, AUC2
 
 def GB_classifier_model_search(X, y):
+	'''runs grid search for the gradient boosting classifer'''
 	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-	param_grid = [{'learning_rate': [.01, .05, .1], 'n_estimators': [1000, 4000], 'max_depth': [5, 10, 15]}]
+	param_grid = [{'learning_rate': [.01, .05], 'n_estimators': [1000], 'max_depth': [5, 10, 15]}]
 	GB = GradientBoostingClassifier()
 	print 'running GradientBoostingClassifier with grid search...'
-	GBc = GridSearchCV(GB, param_grid, verbose = 2, cv = 10, n_jobs = -1) #10 k-folds
+	GBc = GridSearchCV(GB, param_grid, verbose = 2, cv = 3, n_jobs = -1) #10 k-folds
 	GBc.fit(X_train, y_train)
 	pred = GBc.predict_proba(X_test) #get back probabilities
 	pred2 = GBc.predict(X_test) #get back predictions

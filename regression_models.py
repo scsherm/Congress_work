@@ -15,6 +15,7 @@ import numpy as np
 from numpy import inf
 import pandas as pd 
 from nltk.corpus import stopwords
+import cPickle as pickle
 from votes_df_clean import get_precent_party, get_bill_id, get_votes_data, group_by_chamber_latest
 from bills_df_json_clean import to_df, get_party_dict, get_sponsor_party, get_new_attributes
 
@@ -26,8 +27,8 @@ def join_dfs(votes_df, bills_df, bills_json_df):
 	v = v.iloc[:,np.where(v.columns.values == 'is_amendment')[0][0]:] #grab appropriate features
 	v.pop('percent_yes_D')
 	vbills = v.join(bills_json_df, how = 'left')
-	t = TfidfVectorizer(max_features = 1000, stop_words = stop_words)
-	bill_sparse = t.fit_transform(bills_df[0])
+	infile = open('bills_tfidf_sparse.pkl', 'rb')
+	bill_sparse = pickle.load(infile)
 	bill_dense_tfidf = pd.DataFrame(bill_sparse.todense())
 	bill_dense_tfidf.set_index(bills_df.index, inplace = True)
 	vb = vbills.join(bill_dense_tfidf, how = 'left')
@@ -72,7 +73,7 @@ def linear_regression_model(X, y):
 def GB_regression_model_search(X, y):
 	print 'running GB_regression_model_search...'
 	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-	param_grid = [{'learning_rate': [.01, .05], 'n_estimators': [1000, 5000], 'max_depth': [5, 10, 15]}]
+	param_grid = [{'learning_rate': [.01, .05], 'n_estimators': [1000], 'max_depth': [5, 10, 15]}]
 	GB = GradientBoostingRegressor()
 	GBr = GridSearchCV(GB, param_grid, verbose = 2, cv = 3, n_jobs = -1) #3 k-folds
 	GBr.fit(X_train, y_train)
@@ -96,5 +97,5 @@ if __name__ == '__main__':
 	rfr, rfr_mse, rfr_rmse, rfr_r2 = rf_regression_model(X, y)
 	bagr, bagr_mse, bagr_rmse, bagr_r2 = bagging_regression_model(X, y)
 	lr, lr_mse, lr_rmse, lr_r2 = linear_regression_model(X, y)
-	#GBr, GBr_mse, GBr_rmse, GBr_r2 = GB_regression_model_search(X, y)
+	GBr, GBr_mse, GBr_rmse, GBr_r2 = GB_regression_model_search(X, y)
 	
