@@ -25,6 +25,7 @@ import cPickle as pickle
 from votes_df_clean import get_precent_party, get_bill_id, get_votes_data, group_by_chamber_latest
 from bills_df_json_clean import to_df, get_party_dict, get_sponsor_party, get_new_attributes
 
+
 def join_dfs(votes_df, bills_df, bills_json_df):
 	'''joins the matrices to get back the bills data with the response as True or False
 	for whether the bill was voted on'''
@@ -45,6 +46,7 @@ def join_dfs(votes_df, bills_df, bills_json_df):
 	X = all_bills.values.astype(np.float64)
 	return X, y
 
+
 def clf_model(X, y, model = RandomForestClassifier(n_estimators = 5000, n_jobs = -1, oob_score = True)):
 	'''runs a classifier model for the given model (with paramters)'''
 	print 'running {}...'.format(model)
@@ -54,12 +56,15 @@ def clf_model(X, y, model = RandomForestClassifier(n_estimators = 5000, n_jobs =
 	pred = clf.predict_proba(X_test) #get back probabilities
 	pred2 = clf.predict(X_test) #get back predictions
 	fpr, tpr, thresholds = roc_curve(y_test, pred[:,1])
+	
 	#get the AUC
 	AUC = roc_auc_score(y_test, pred[:,1])
+	
 	#get the AUC for precision and recall curve
 	AUC2 = average_precision_score(y_test, pred[:,1])
 	recall = recall_score(y_test, pred2)
 	precision = precision_score(y_test, pred2)
+	
 	#plot AUC
 	plt.plot(fpr, tpr, label = 'AUC = {}'.format(round(AUC,4)))
 	v = np.linspace(0,1)
@@ -71,25 +76,30 @@ def clf_model(X, y, model = RandomForestClassifier(n_estimators = 5000, n_jobs =
 	plt.ylim(0,1.1)
 	plt.axhline(1, color = 'k', linestyle = '--')
 	plt.axvline(0, color = 'k', linestyle = '--')
+	plt.legend()
 	return clf, recall, AUC, precision, AUC2
+
 
 def GB_classifier_model_search(X, y):
 	'''runs grid search for the gradient boosting classifer'''
 	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-	param_grid = [{'learning_rate': [.01, .05], 'n_estimators': [1000], 'max_depth': [5, 10, 15]}]
+	param_grid = [{'learning_rate': [.01, .001], 'n_estimators': [1000], 'max_depth': [3,5,7]}]
 	GB = GradientBoostingClassifier()
 	print 'running GradientBoostingClassifier with grid search...'
-	GBc = GridSearchCV(GB, param_grid, verbose = 2, cv = 3, n_jobs = -1) #10 k-folds
+	GBc = GridSearchCV(GB, param_grid, verbose = 2, cv = 2, n_jobs = -1) #10 k-folds
 	GBc.fit(X_train, y_train)
 	pred = GBc.predict_proba(X_test) #get back probabilities
 	pred2 = GBc.predict(X_test) #get back predictions
 	fpr, tpr, thresholds = roc_curve(y_test, pred[:,1])
+	
 	#get the AUC
 	AUC = roc_auc_score(y_test, pred[:,1])
+	
 	#get the AUC for precision and recall curve
 	AUC2 = average_precision_score(y_test, pred[:,1])
 	recall = recall_score(y_test, pred2)
 	precision = precision_score(y_test, pred2)
+	
 	#plot AUC
 	plt.plot(fpr, tpr, label = 'AUC = {}'.format(round(AUC,4)))
 	v = np.linspace(0,1)
@@ -101,7 +111,7 @@ def GB_classifier_model_search(X, y):
 	plt.ylim(0,1.1)
 	plt.axhline(1, color = 'k', linestyle = '--')
 	plt.axvline(0, color = 'k', linestyle = '--')
-	plt.legend() 
+	plt.legend()
 	return GBc, recall, AUC, precision, AUC2
 
 
@@ -116,16 +126,23 @@ if __name__ == '__main__':
 	votes_df.set_index('bill_id', inplace = True)
 	bills_df = pd.read_pickle('bills_df')
 	X, y = join_dfs(votes_df, bills_df, bills_json_df)
-	rfc, rfc_recall, rfc_AUC, rfc_precision, rfc_AUC2 = clf_model(X, y, model = RandomForestClassifier(n_estimators = 5000, n_jobs = -1, oob_score = True))
-	plt.savefig("RandomForestClassifier", format = 'png')
-	GNB, GNB_recall, GNB_AUC, GNB_precision, GNB_AUC2 = clf_model(X, y, model = GaussianNB())
-	plt.savefig("GaussianNB", format = 'png')
-	MNB, MNB_recall, MNB_AUC, MNB_precision, MNB_AUC2 = clf_model(X, y, model = MultinomialNB())
-	plt.savefig("MultinomialNB", format = 'png')
-	BNB, BNB_recall, BNB_AUC, BNB_precision, BNB_AUC2 = clf_model(X, y, model = BernoulliNB())
-	plt.savefig("BernoulliNB", format = 'png')
-	logitr, logitr_recall, logitr_AUC, logitr_precision, logitr_AUC2 = clf_model(X, y, model = LogisticRegression())
-	plt.savefig("LogisticRegression", format = 'png')
+	# rfc, rfc_recall, rfc_AUC, rfc_precision, rfc_AUC2 = clf_model(X, y, model = RandomForestClassifier(n_estimators = 5000, n_jobs = -1, oob_score = True))
+	# plt.savefig("RandomForestClassifier.png", format = 'png')
+	# plt.close()
+	# GNB, GNB_recall, GNB_AUC, GNB_precision, GNB_AUC2 = clf_model(X, y, model = GaussianNB())
+	# plt.savefig("GaussianNB.png", format = 'png')
+	# plt.close()
+	# MNB, MNB_recall, MNB_AUC, MNB_precision, MNB_AUC2 = clf_model(X, y, model = MultinomialNB())
+	# plt.savefig("MultinomialNB.png", format = 'png')
+	# plt.close()
+	# BNB, BNB_recall, BNB_AUC, BNB_precision, BNB_AUC2 = clf_model(X, y, model = BernoulliNB())
+	# plt.savefig("BernoulliNB.png", format = 'png')
+	# plt.close()
+	# logitr, logitr_recall, logitr_AUC, logitr_precision, logitr_AUC2 = clf_model(X, y, model = LogisticRegression())
+	# plt.savefig("LogisticRegression.png", format = 'png')
+	# plt.close()
 	GBc, GBc_recall, GBc_AUC, GBc_precision, GBc_AUC2 = GB_classifier_model_search(X, y)
-	plt.savefig("GradientBoostingClassifier", format = 'png')
+	plt.savefig("GradientBoostingClassifier.png", format = 'png')
+	#plt.legend()
+	plt.close()
 

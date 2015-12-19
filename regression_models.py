@@ -11,6 +11,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import BaggingRegressor
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.grid_search import GridSearchCV
+from sklearn.externals import joblib
 import numpy as np
 from numpy import inf
 import pandas as pd 
@@ -27,8 +28,7 @@ def join_dfs(votes_df, bills_df, bills_json_df):
 	v = v.iloc[:,np.where(v.columns.values == 'is_amendment')[0][0]:] #grab appropriate features
 	v.pop('percent_yes_D')
 	vbills = v.join(bills_json_df, how = 'left')
-	infile = open('bills_tfidf_sparse.pkl', 'rb')
-	bill_sparse = pickle.load(infile)
+	bill_sparse = joblib.load('bills_tfidf_sparse.pkl')
 	bill_dense_tfidf = pd.DataFrame(bill_sparse.todense())
 	bill_dense_tfidf.set_index(bills_df.index, inplace = True)
 	vb = vbills.join(bill_dense_tfidf, how = 'left')
@@ -40,7 +40,7 @@ def join_dfs(votes_df, bills_df, bills_json_df):
 def rf_regression_model(X, y):
 	print 'running rf_regression_model...'
 	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-	rfr = RandomForestRegressor(n_estimators = 5000, n_jobs = -1, oob_score = True)
+	rfr = RandomForestRegressor(n_estimators = 	10000, n_jobs = -1, oob_score = True)
 	rfr.fit(X_train, y_train)
 	pred = rfr.predict(X_test)
 	mse = mean_squared_error(y_test, pred)
@@ -73,9 +73,9 @@ def linear_regression_model(X, y):
 def GB_regression_model_search(X, y):
 	print 'running GB_regression_model_search...'
 	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-	param_grid = [{'learning_rate': [.01, .05], 'n_estimators': [1000], 'max_depth': [5, 10, 15]}]
+	param_grid = [{'learning_rate': [.01, .001], 'n_estimators': [1000], 'max_depth': [3,5,7]}]
 	GB = GradientBoostingRegressor()
-	GBr = GridSearchCV(GB, param_grid, verbose = 2, cv = 3, n_jobs = -1) #3 k-folds
+	GBr = GridSearchCV(GB, param_grid, verbose = 2, cv = 2, n_jobs = -1) #3 k-folds
 	GBr.fit(X_train, y_train)
 	pred = GBr.predict(X_test)
 	mse = mean_squared_error(y_test, pred)
@@ -94,8 +94,8 @@ if __name__ == '__main__':
 	votes_df.set_index('bill_id', inplace = True)
 	bills_df = pd.read_pickle('bills_df')
 	X, y = join_dfs(votes_df, bills_df, bills_json_df)
-	rfr, rfr_mse, rfr_rmse, rfr_r2 = rf_regression_model(X, y)
+	rfr2, rfr_mse2, rfr_rmse2, rfr_r22 = rf_regression_model(X, y)
 	bagr, bagr_mse, bagr_rmse, bagr_r2 = bagging_regression_model(X, y)
 	lr, lr_mse, lr_rmse, lr_r2 = linear_regression_model(X, y)
-	GBr, GBr_mse, GBr_rmse, GBr_r2 = GB_regression_model_search(X, y)
+	GBr2, GBr_mse2, GBr_rmse2, GBr_r22 = GB_regression_model_search(X, y)
 	

@@ -1,82 +1,104 @@
-import matplotlib.pyplot as plt
+from __future__ import print_function
+from time import time
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from sklearn.decomposition import NMF, LatentDirichletAllocation
+from sklearn.datasets import fetch_20newsgroups
+from nltk.stem.porter import PorterStemmer
+from nltk.stem.snowball import SnowballStemmer
+from nltk.stem.wordnet import WordNetLemmatizer
+import cPickle as pickle
+import pandas as pd 
+from nltk.corpus import stopwords
+import Stemmer
+import nltk.stem 
+import pattern.en as en
 import numpy as np
-from nltk.corpus import stopwords
-from votes_df_clean import get_precent_party, get_bill_id, get_votes_data, group_by_chamber_latest
-from bills_df_json_clean import to_df, get_party_dict, get_sponsor_party, get_new_attributes
-import re
-import yaml
-from pymongo import MongoClient
-import pyspark as ps
-from pyspark.mllib.clustering import LDAModel
-from pyspark.mllib.linalg import Vectors
-from pyspark import SparkContext
-from pyspark.sql import HiveContext
-from pyspark.mllib.util import MLUtils
-from gensim.models.ldamodel import LdaModel
-from gensim import corpora
-from gensim import matutils
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-import nltk
-from nltk import tokenize
-from nltk.corpus import stopwords
-import pandas as pd
-from gensim import corpora, models, similarities
+import unicodedata
 
-def join_dfs(bills_json_df, bills_df):
-	bills_json_df.set_index('bill_id', inplace = True)
-	bills = bills_df.join(bills_json_df.congress, how = 'left')
-	return bills
-sc = SparkContext()
-hive_contxt = HiveContext(sc)
-df = hive_contxt.createDataFrame(bills)
 
-docs = bills[0]
-congressional_stop_words = open('congressional_stop_words.txt').read().split('\n')
-stop_words = stopwords.words('english')
-stop_words = stop_words + congressional_stop_words
+class StemmedTfidfVectorizer(TfidfVectorizer):
+    '''add lemmatization and ignore digits for TfidfVectorizer'''
+    def build_analyzer(self):
+        analyzer = super(TfidfVectorizer, self).build_analyzer()
+        return lambda doc: (en.lemma(word) for word in analyzer(doc) if str.isdigit(unicodedata.normalize('NFKD', word).encode('ascii','ignore')) == False)
 
-def tokenize_and_normalize(chunks):
-    #words = [ tokenize.word_tokenize(sent.encode("utf8")) for sent in tokenize.sent_tokenize(chunks) ]
-    words  = []
-    try:
-    	for sent in tokenize.sent_tokenize(chunks):
-    		words.append(tokenize.word_tokenize(sent))
-    except:
-    	pass
 
-    flatten = [ inner for sublist in words for inner in sublist ]
-    stripped = [] 
+class StemmedTfVectorizer(CountVectorizer):
+    '''add lemmatization and ignore digits for CountVectorizer'''
+    def build_analyzer(self):
+        analyzer = super(CountVectorizer, self).build_analyzer()
+        return lambda doc: (en.lemma(word) for word in analyzer(doc) if str.isdigit(unicodedata.normalize('NFKD', word).encode('ascii','ignore')) == False)
 
-    for word in flatten: 
-        if word not in stop_words:
-            try:
-                stripped.append(word.encode('latin-1').decode('utf8').lower())
-            except:
-                #print "Cannot encode: " + word
-                pass
-            
-    return [ word for word in stripped if len(word) > 1 ] 
 
-# def print_features(clf, vocab, n=10):
-#     """ Print sorted list of non-zero features/weights. """
-#     coef = clf.coef_[0]
-#     print 'positive features: %s' % (' '.join(['%s/%.2f' % (vocab[j], coef[j]) for j in np.argsort(coef)[::-1][:n] if coef[j] > 0]))
-#     print 'negative features: %s' % (' '.join(['%s/%.2f' % (vocab[j], coef[j]) for j in np.argsort(coef)[:n] if coef[j] < 0]))
+def print_top_words(model, feature_names, n_top_words):
+    '''print topics and indicies and store them in dictionary'''
+    topic_dict = {} #empty dict
+    #enumerate lda/nmf components
+    for topic_idx, topic in enumerate(model.components_):
+        topic_dict[topic_idx] = " ".join([feature_names[i] for i in topic.argsort()[:-n_top_words - 1:-1]])
+        print("Topic {}:".format(topic_idx))
+        print(" ".join([feature_names[i] for i in topic.argsort()[:-n_top_words - 1:-1]]))
+    print()
+    return topic_dict
 
-# lda = fit_lda(X,vocab)
 
-# lda.show_topics(num_topics=10,num_words=50,formatted=False)
+def fit_nmf(tfidf):
+    '''takes in a tfidf sparse vector and finds the top topics'''
+    nmf = NMF(n_components=n_topics, random_state=1, alpha=.1, l1_ratio=.5)
+    nmf.fit(tfidf)
+    tfidf_feature_names = tfidf_vectorizer.get_feature_names()
+    nmf_topic_dict = print_top_words(nmf, tfidf_feature_names, n_top_words)
+    return nmf, nmf_topic_dict
 
-parsed = [ tokenize_and_normalize(s) for s in docs ]
 
-dictionary = corpora.Dictionary(parsed)
-corpus = [dictionary.doc2bow(text) for text in parsed]
-tfidf = models.TfidfModel(corpus)
-corpus_tfidf = tfidf[corpus]
+def fit_lda(tf):
+    '''takes in a tf sparse vector and finds the top topics'''
+    lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=5, learning_method='online', learning_offset=50., random_state=0)
+    lda.fit(tf)
+    tf_feature_names = tf_vectorizer.get_feature_names()
+    lda_topic_dict = print_top_words(lda, tf_feature_names, n_top_words)
+    return lda, lda_topic_dict
 
-%time lda=LdaModel(corpus_tfidf, id2word=dictionary, num_topics=15, update_every=0, passes=200)
-lda.print_topics(15, 15)
 
 if __name__ == '__main__':
-	bills_df = pd.read_pickle('bills_df')
-	bills_json_df = to_df()
+    congressional_stop_words = open('congressional_stop_words.txt').read().split('\n')
+    stp_words = stopwords.words('english')
+    stp_words = stp_words + congressional_stop_words
+    n_topics = 20
+    n_top_words = 50
+    bills_df_congress = pd.read_pickle('bills_df_congress')
+    bills_df_congress.drop(bills_df_congress.index[np.where(bills_df_congress.congress.isnull())[0][0]], inplace = True)
+    congress_topic_dict_nmf = {}
+    congress_topic_dict_lda = {}
+    nmf_words_weights = {}
+    lda_words_weights = {}
+    for congress in bills_df_congress.congress.unique():
+        print("running nmf/lda for congress {}".format(congress))
+        b = bills_df_congress.query('congress == @congress')
+        tfidf_vectorizer = StemmedTfidfVectorizer(max_features = 1000, stop_words = stp_words, max_df = 0.5)
+        tf_vectorizer = StemmedTfVectorizer(max_features = 1000, stop_words = stp_words, max_df = 0.5)
+        b_tfidf = tfidf_vectorizer.fit_transform(b[0])
+        b_tf = tf_vectorizer.fit_transform(b[0])
+        nmf, nmf_topic_dict = fit_nmf(b_tfidf)
+        lda, lda_topic_dict = fit_lda(b_tf)
+        congress_topic_dict_nmf[congress] = nmf_topic_dict
+        congress_topic_dict_lda[congress] = lda_topic_dict
+        nmf_words_weights[congress] = [zip(tfidf_vectorizer.get_feature_names(), i) for i in nmf.components_*1000]
+        lda_words_weights[congress] = [zip(tf_vectorizer.get_feature_names(), i) for i in lda.components_]
+    with open('bills_tfidf_sparse.pkl', 'rb') as infile:
+        tfidf = pickle.load(infile)
+    with open('tfidf_vectorizer.pkl', 'rb') as infile:
+        tfidf_vectorizer = pickle.load(infile)
+    with open('bills_tf_sparse.pkl', 'rb') as infile:
+        tf = pickle.load(infile)
+    with open('tf_vectorizer.pkl', 'rb') as infile:
+        tf_vectorizer = pickle.load(infile)
+    nmf, nmf_topic_dict = fit_nmf(tfidf)
+    lda, lda_topic_dict = fit_lda(tf)
+    tfidf_feature_names = tfidf_vectorizer.get_feature_names()
+    tf_feature_names = tf_vectorizer.get_feature_names()
+
+
+
+
+
