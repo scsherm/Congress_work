@@ -6,6 +6,7 @@ from sklearn.datasets import fetch_20newsgroups
 from nltk.stem.porter import PorterStemmer
 from nltk.stem.snowball import SnowballStemmer
 from nltk.stem.wordnet import WordNetLemmatizer
+from sklearn.externals import joblib
 import cPickle as pickle
 import pandas as pd 
 from nltk.corpus import stopwords
@@ -85,14 +86,10 @@ if __name__ == '__main__':
         congress_topic_dict_lda[congress] = lda_topic_dict
         nmf_words_weights[congress] = [zip(tfidf_vectorizer.get_feature_names(), i) for i in nmf.components_*1000]
         lda_words_weights[congress] = [zip(tf_vectorizer.get_feature_names(), i) for i in lda.components_]
-    with open('bills_tfidf_sparse.pkl', 'rb') as infile:
-        tfidf = pickle.load(infile)
-    with open('tfidf_vectorizer.pkl', 'rb') as infile:
-        tfidf_vectorizer = pickle.load(infile)
-    with open('bills_tf_sparse.pkl', 'rb') as infile:
-        tf = pickle.load(infile)
-    with open('tf_vectorizer.pkl', 'rb') as infile:
-        tf_vectorizer = pickle.load(infile)
+    tfidf = joblib.load('bills_tfidf_sparse.pkl')
+    tfidf_vectorizer = joblib.load('tfidf_vectorizer.pkl')
+    tf = joblib.load('bills_tf_sparse.pkl')
+    tf_vectorizer = joblib.load('tf_vectorizer.pkl')
     nmf, nmf_topic_dict = fit_nmf(tfidf)
     lda, lda_topic_dict = fit_lda(tf)
     tfidf_feature_names = tfidf_vectorizer.get_feature_names()
