@@ -17,6 +17,7 @@ import unicodedata
 
 class StemmedTfidfVectorizer(TfidfVectorizer):
     '''add lemmatization and ignore digits for TfidfVectorizer'''
+
     def build_analyzer(self):
         analyzer = super(TfidfVectorizer, self).build_analyzer()
         return lambda doc: (en.lemma(word) for word in analyzer(doc) if str.isdigit(unicodedata.normalize('NFKD', word).encode('ascii','ignore')) == False)
@@ -24,13 +25,15 @@ class StemmedTfidfVectorizer(TfidfVectorizer):
 
 class StemmedTfVectorizer(CountVectorizer):
     '''add lemmatization and ignore digits for CountVectorizer'''
+
     def build_analyzer(self):
         analyzer = super(CountVectorizer, self).build_analyzer()
         return lambda doc: (en.lemma(word) for word in analyzer(doc) if str.isdigit(unicodedata.normalize('NFKD', word).encode('ascii','ignore')) == False)
 
 
 def print_top_words(model, feature_names, n_top_words):
-    '''print topics and indicies and store them in dictionary'''
+    '''print topics/indicies and store them in dictionary'''
+
     topic_dict = {} #empty dict
     #enumerate lda/nmf components
     for topic_idx, topic in enumerate(model.components_):

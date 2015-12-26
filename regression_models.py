@@ -20,11 +20,11 @@ def join_dfs(votes_df, bills_df, bills_json_df):
 	'''Joins the data and return X, y numpy arrays for training'''
 
 	v = votes_df.iloc[:,np.where(votes_df.columns.values == 'num_yes')[0][0]:]
-	y = v.pop('percent_yes_R')
+	y = v.pop('percent_yes_D')
 	y.fillna(0, inplace = True)
 	y = y.values
 	v = v.iloc[:,np.where(v.columns.values == 'is_amendment')[0][0]:] #grab appropriate features
-	v.pop('percent_yes_R')
+	v.pop('percent_yes_D')
 	vbills = v.join(bills_json_df, how = 'left')
 	bill_sparse = joblib.load('bills_tfidf_sparse.pkl')
 	bill_dense_tfidf = pd.DataFrame(bill_sparse.todense())
@@ -45,7 +45,7 @@ def rf_regression_model(X, y):
 	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 	#Set random forest object and fit model
-	rfr = RandomForestRegressor(n_estimators = 	10000, n_jobs = -1, oob_score = True)
+	rfr = RandomForestRegressor(n_estimators = 	1000, n_jobs = -1, oob_score = True)
 	rfr.fit(X_train, y_train)
 
 	#Calulate prediction
@@ -96,7 +96,7 @@ def linear_regression_model(X, y):
 	pred = lr.predict(X_test)
 
 	#Calculate error
-	mse = mean_squared_error(np.exp(y_test), pred)
+	mse = mean_squared_error(y_test, pred)
 	rmse = np.sqrt(mse)
 	r2 = r2_score(y_test, pred)
 	return lr, mse, rmse, r2
@@ -143,4 +143,5 @@ if __name__ == '__main__':
 	bagr3, bagr_mse3, bagr_rmse3, bagr_r23 = bagging_regression_model(X, y)
 	lr3, lr_mse3, lr_rmse3, lr_r23 = linear_regression_model(X, y)
 	GBr3, GBr_mse3, GBr_rmse3, GBr_r23 = GB_regression_model_search(X, y)
+	GBr3 = GradientBoostingRegressor(learning_rate = 0.01, max_depth = 7, n_estimators = 1000)
 	

@@ -15,6 +15,7 @@ from multiprocessing import Pool
 def get_H_W(nmf, tfidf):
 	'''Creates the H and W matricies from the nmf object and calculates
 	the mean weight of topic for each congress number (i.e. the years)'''
+	
 	#create H matrix (docs x topics)
 	H = nmf.components_
 	#create W matrix (topics x features)
@@ -56,9 +57,15 @@ def explore_topic(mean_topic_con_nmf, idx, tfidf_vectorizer, H):
 	#get feature names form vectorizer
 	feature_names = tfidf_vectorizer.get_feature_names()
 
+	#create list for xtick labels
+	con = ['1993', '1995', '1997', '1999', '2001', '2003', '2005', '2007', '2009', '2011', '2013', '2015']
+
 	#plot topic over time
 	plt.plot(mean_topic_con_nmf[idx])
 	plt.title('Topic {}'.format(idx))
+	ax = plt.gca()
+	ax.set_xticks([0,1,2,3,4,5,6,7,8,9,10,11])
+	ax.set_xticklabels(con)
 	plt.show()
 	plt.close()
 
@@ -68,7 +75,7 @@ def explore_topic(mean_topic_con_nmf, idx, tfidf_vectorizer, H):
 	words = map(lambda x: list(repeat(x[0], int(x[1]))), topic_arr_names)
 	words = [word for sublist in words for word in sublist]
 	text = ' '.join(words)
-	wc = WordCloud(background_color = 'black', width = 1800, height = 800).generate(text)
+	wc = WordCloud(background_color = 'white', width = 1800, height = 800).generate(text)
 	plt.imshow(wc)
 	plt.axis('off')
 
@@ -102,6 +109,7 @@ def topic_purity_maximizer(tfidf, tfidf_vectorizer):
 
 def doc_word_count(tfidf, reverse_lookup, word1, word2 = None):
 	'''Returns either the number of documents associated with two words or one'''
+
 	tfidf_arr = tfidf.toarray()
 	if word2:
 		return len(np.where((tfidf_arr[:,reverse_lookup[word1]] > 0) & (tfidf_arr[:,reverse_lookup[word2]] > 0))[0])
@@ -154,22 +162,6 @@ def get_cos_dist_H(H, k):
 			return np.array(d)
 
 
-# def run_cos_H(tfidf, tfidf_vectorizer):
-# 	'''Returns the mean cosine similarity between topics of the H matrix'''
-
-# 	avg_d_k = []
-# 	bar = Bar('Processing', max = 50)
-# 	for k in xrange(101,151):
-# 		nmf, nmf_topic_dict = fit_nmf(tfidf, k, tfidf_vectorizer)
-# 		H = nmf.components_
-# 		d = pairwise_distances(H, metric='cosine', n_jobs = -1)
-# 		idx = np.tril_indices(d.shape[0], k=-1)
-# 		avg_d_k.append((d[idx].mean(), k))
-# 		bar.next()
-# 	bar.finish()
-# 	return avg_d_k
-
-
 def get_cos_dist_W(W, k, tfidf):
 	'''Returns an array of the cosine similarities of each topic'''
 
@@ -180,27 +172,13 @@ def get_cos_dist_W(W, k, tfidf):
 	#progress tracking
 	bar = Bar('Processing')
 	for i in xrange(k):
-		vec = pairwise_distances(tfidf[labels == i], metric='cosine')
-		idx = np.tril_indices(vec.shape[0], k=-1)
-		dist_l.append(vec[idx].mean())
+		if len(W[labels == i]):
+			vec = pairwise_distances(tfidf[labels == i], metric='cosine')
+			idx = np.tril_indices(vec.shape[0], k=-1)
+			dist_l.append(vec[idx].mean())
 		bar.next()
 	bar.finish()
 	return np.array(dist_l)
-
-
-# def run_cos_W(tfidf, tfidf_vectorizer):
-# 	'''Returns the average intertopic cosine similarity and the corresponding k value'''
-
-# 	avg_d_k = []
-# 	bar = Bar('Processing')
-# 	for k in xrange(101,151):
-# 		nmf, nmf_topic_dict = fit_nmf(tfidf, k, tfidf_vectorizer)
-# 		W = nmf.transform(tfidf) #Docs x topics matrix
-# 		d = get_cos_dist_W(W, k, tfidf)
-# 		avg_d_k.append((d.mean(), k))
-# 		bar.next()
-# 	bar.finish()
-# 	return avg_d_k
 
 
 def run_cos_W(k):
@@ -226,7 +204,7 @@ def parallel_run_cos_W(parameter_list):
 	'''Runs the nmf function and computes the cosine similarity on every topic
 	in the tfidf matrix in parallel  on 16 cores'''
 
-	pool = Pool(processes = 32)
+	pool = Pool(processes = 36)
 	results = pool.map(run_cos_W, parameter_list)
 	return results
 
@@ -240,7 +218,9 @@ def run_cos_H(k):
 	H = nmf.components_
 	d = pairwise_distances(H, metric='cosine')
 	idx = np.tril_indices(d.shape[0], k=-1)
+	print d[idx].mean(), k
 	return (d[idx].mean(), k)
+
 
 def parallel_run_cos_H(parameter_list):
 	'''Runs the nmf function and computes the cosine similarity between topics
@@ -251,15 +231,89 @@ def parallel_run_cos_H(parameter_list):
 	return results
 
 
+def frob_norm(k):
+	'''Return the frobenius norm for a given number of topics'''
+
+	#load tfidf and vectorizer
+	tfidf = joblib.load('bills_tfidf_sparse.pkl')
+	tfidf_vectorizer = joblib.load('tfidf_vectorizer.pkl')
+
+	#run nmf
+	nmf, nmf_topic_dict = fit_nmf(tfidf, k, tfidf_vectorizer)
+	print nmf.reconstruction_err_, k
+	return (nmf.reconstruction_err_, k)
 
 
+def parallel_frob_norm(parameter_list):
+	'''Runs the nmf function and computes the frobenius norm between V
+	and the HW product in parallel on 36 cores'''
+
+	pool = Pool(processes = 36)
+	results = pool.map(frob_norm, parameter_list)
+	return results
+
+
+def plot_multi_topics(mean_topic_con_nmf):
+	'''Plots different topics on the same graph witha separate legend'''
+
+	plt.plot(mean_topic_con_nmf[110], label = 'Terror')
+	plt.plot(mean_topic_con_nmf[76], label = 'Iraq')
+	plt.plot(mean_topic_con_nmf[188], label = 'Budget')
+	plt.plot(mean_topic_con_nmf[205], label = 'Katrina')
+	plt.plot(mean_topic_con_nmf[214], label = 'STEM')
+	plt.plot(mean_topic_con_nmf[220], label = 'Internet')
+	plt.plot(mean_topic_con_nmf[277], label = 'Greenhouse')
+	plt.plot(mean_topic_con_nmf[286], label = 'Care')
+	con = ['1993', '1995', '1997', '1999', '2001', '2003', '2005', '2007', '2009', '2011', '2013', '2015']
+	#plt.title('Topics by Congress/Year')
+	plt.xlabel('Congress/Year')
+	plt.ylabel('Prevalence')
+	ax = plt.gca()
+	ax.set_xticks([0,1,2,3,4,5,6,7,8,9,10,11])
+	ax.set_xticklabels(con)
+	# create a second figure for the legend
+	figLegend = plt.figure(figsize = (1.5,1.3))
+	# produce a legend for the objects in the other figure
+	plt.figlegend(*ax.get_legend_handles_labels(), loc = 'upper left', ncol = 3, mode="expand")	
+	plt.show()
+
+
+def plot_cosin_sim():
+	'''Plots the cosine similarity for H & W matrices'''
+
+	#load data
+	H_sim = joblib.load('avg_d_k_H_10to60.pkl')+joblib.load('avg_d_k_H_61to100.pkl')+joblib.load('avg_d_k_H_101to164.pkl')+joblib.load('avg_d_k_H_165to205.pkl')+joblib.load('avg_d_k_H_205to520.pkl')
+	W_sim = joblib.load('avg_d_k_W_10to60.pkl')+joblib.load('avg_d_k_W_61to100.pkl')+joblib.load('avg_d_k_W_101to172.pkl')+joblib.load('avg_d_k_W_175to355.pkl')+joblib.load('avg_d_k_W_355to520.pkl')
+	
+	#Separate K and distances
+	H_sim = [x for x in H_sim if x[1] % 5 == 0]
+	H_sim_x = map(lambda x: x[1], H_sim)
+	H_sim_y = map(lambda x: x[0], H_sim)
+
+	#Plot H
+	plt.plot(H_sim_x, H_sim_y, label = 'Between Topics', color = 'g')
+
+	#Separate K and distances
+	W_sim = [x for x in W_sim if x[1] % 5 == 0]
+	W_sim_x = map(lambda x: x[1], W_sim)
+	W_sim_y = map(lambda x: x[0], W_sim)
+
+	#Plot W
+	plt.plot(W_sim_x, W_sim_y, label = 'Within Topics', color = 'b')
+
+	#Legend and labels
+	plt.xlabel('Number of Topics')
+	plt.ylabel('Average Cosine Similarity')
+	plt.vlines(300, 0.65, 1, color = 'r')
+	plt.legend()
+	plt.show()
 
 if __name__ == '__main__':
-    tfidf = joblib.load('bills_tfidf_sparse.pkl')
-    tfidf_vectorizer = joblib.load('tfidf_vectorizer.pkl')
+    tfidf = joblib.load('bills_tfidf_sparse_full.pkl')
+    tfidf_vectorizer = joblib.load('tfidf_vectorizer_full.pkl')
     tf = joblib.load('bills_tf_sparse.pkl')
     tf_vectorizer = joblib.load('tf_vectorizer.pkl')
-    n_topics = 70
+    n_topics = 300
     ntopic_pur_list = topic_purity_maximizer(tfidf, tfidf_vectorizer)
     #tf = joblib.load('bills_tf_sparse.pkl')
     #tf_vectorizer = joblib.load('tf_vectorizer.pkl')
@@ -268,8 +322,17 @@ if __name__ == '__main__':
 	H, W, mean_topic_con_nmf = get_H_W(nmf, tfidf)
 	reverse_lookup = {word: idx for idx, word in enumerate(np.array(tfidf_vectorizer.get_feature_names()))}
 	average_coherence_k = run_topic_coherence(tfidf, reverse_lookup)
-	avg_d_k_H_164 = parallel_run_cos_H(range(101,165))
-	avg_d_k_W_164 = parallel_run_cos_W(range(101,165))
+	avg_d_k_H_525 = parallel_run_cos_H(range(205,525,5))
+	avg_d_k_W_525 = parallel_run_cos_W(range(355,525,5))
+	frob_norm_list = parallel_frob_norm(range(30,206,5))
+
+
+
+
+
+
+
+
 
 
 
