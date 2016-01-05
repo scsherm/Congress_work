@@ -1,5 +1,6 @@
 import os
 
+
 def get_filepaths_type(datatype = 'votes'):
 	'''gets the filepaths for either votes or bills json data'''
 	datatype_file_list = []

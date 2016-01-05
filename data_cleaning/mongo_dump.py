@@ -1,6 +1,12 @@
+import sys
+sys.path.append('/Users/scsherm/Documents/Congress_work/Unbalanced_Data')
+sys.path.append('/Users/scsherm/Documents/Congress_work/topic_modeling')
+sys.path.append('/Users/scsherm/Documents/Congress_work/models')
+sys.path.append('/Users/scsherm/Documents/Congress_work/data_cleaning')
 from pymongo import MongoClient
 from get_filepaths import get_filepaths_type
 import json
+
 
 def mongo_dump(datatype = 'votes'):
 	'''for a given data type (bills or votes) will dump all json files to 

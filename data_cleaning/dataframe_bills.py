@@ -1,3 +1,8 @@
+import sys
+sys.path.append('/Users/scsherm/Documents/Congress_work/Unbalanced_Data')
+sys.path.append('/Users/scsherm/Documents/Congress_work/topic_modeling')
+sys.path.append('/Users/scsherm/Documents/Congress_work/models')
+sys.path.append('/Users/scsherm/Documents/Congress_work/data_cleaning')
 import pandas as pd 
 import numpy as np 
 from group_texts import group_texts

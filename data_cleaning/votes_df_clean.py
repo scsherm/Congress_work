@@ -1,6 +1,7 @@
 import pandas as pd 
 import numpy as np 
 
+
 def get_precent_party(line):
 	'''return the percent of type of vote for a particular party'''
 	if type(line) == list:
