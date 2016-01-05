@@ -40,9 +40,14 @@ def join_dfs(votes_df, bills_df, bills_json_df):
 	bill_sparse = joblib.load('bills_tfidf_sparse.pkl')
 	bill_dense_tfidf = pd.DataFrame(bill_sparse.todense())
 	bill_dense_tfidf.set_index(bills_df.index, inplace = True)
+    W = joblib.load('W_300_full.pkl')
+    W = pd.DataFrame(W)
+    W.rename(columns = lambda x: str(x) + '_', inplace=True)
+    W.set_index(bills_df.index, inplace = True)
 
 	#join text with features
 	all_bills = bill_dense_tfidf.join(bills_json_df, how = 'left')
+    all_bills = all_bills.join(W, how = 'left')
 	all_bills = all_bills.join(v.vote, how = 'left')
 	all_bills.vote.fillna(0, inplace = True)
 
@@ -195,10 +200,10 @@ if __name__ == '__main__':
     bills_df = pd.read_pickle('bills_df')
     X, y = join_dfs(votes_df, bills_df, bills_json_df)
     rfc2, rfc_recall2, rfc_AUC2, rfc_precision2, rfc_AUC22 = clf_model(X, y, m_label = 'RFC', model = RandomForestClassifier(n_estimators = 5000, n_jobs = -1, oob_score = True))
-    GNB2, GNB_recall2, GNB_AUC2, GNB_precision2, GNB_AUC22 = clf_model(X, y, m_label = 'GNB', model = GaussianNB())
-    MNB2, MNB_recall2, MNB_AUC2, MNB_precision2, MNB_AUC22 = clf_model(X, y, m_label = 'MNB', model = MultinomialNB())
-    BNB2, BNB_recall2, BNB_AUC2, BNB_precision2, BNB_AUC22 = clf_model(X, y, m_label = 'BNB', model = BernoulliNB())
-    logitr2, logitr_recall2, logitr_AUC2, logitr_precision2, logitr_AUC22 = clf_model(X, y, m_label = 'Logr', model = LogisticRegression())
-    model, X_train, y_train, X_test, y_test, score = run_neural_net(X, y)
+    #GNB2, GNB_recall2, GNB_AUC2, GNB_precision2, GNB_AUC22 = clf_model(X, y, m_label = 'GNB', model = GaussianNB())
+    #MNB2, MNB_recall2, MNB_AUC2, MNB_precision2, MNB_AUC22 = clf_model(X, y, m_label = 'MNB', model = MultinomialNB())
+    #BNB2, BNB_recall2, BNB_AUC2, BNB_precision2, BNB_AUC22 = clf_model(X, y, m_label = 'BNB', model = BernoulliNB())
+    #logitr2, logitr_recall2, logitr_AUC2, logitr_precision2, logitr_AUC22 = clf_model(X, y, m_label = 'Logr', model = LogisticRegression())
+    #model, X_train, y_train, X_test, y_test, score = run_neural_net(X, y)
 
 

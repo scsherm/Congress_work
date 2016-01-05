@@ -12,14 +12,14 @@ from progress.bar import Bar
 from multiprocessing import Pool
 
 
-def get_H_W(nmf, tfidf):
+def get_H_W(nmf, tfidf, W):
 	'''Creates the H and W matricies from the nmf object and calculates
 	the mean weight of topic for each congress number (i.e. the years)'''
-	
+
 	#create H matrix (docs x topics)
-	H = nmf.components_
+	#H = nmf.components_
 	#create W matrix (topics x features)
-	W = nmf.transform(tfidf)
+	#W = nmf.transform(tfidf)
 
 	bills_df_congress = pd.read_pickle('bills_df_congress')
 
@@ -37,7 +37,7 @@ def get_H_W(nmf, tfidf):
 
 	#groupby congress
 	mean_topic_con_nmf = W.groupby('congress').mean()
-	return H, W, mean_topic_con_nmf
+	return mean_topic_con_nmf
 
 
 def plot_all_topics(mean_topic_con_nmf):
@@ -253,28 +253,54 @@ def parallel_frob_norm(parameter_list):
 	return results
 
 
-def plot_multi_topics(mean_topic_con_nmf):
+def plot_multi_topics_bar(mean_topic_con_nmf):
 	'''Plots different topics on the same graph witha separate legend'''
 
-	plt.plot(mean_topic_con_nmf[110], label = 'Terror')
-	plt.plot(mean_topic_con_nmf[76], label = 'Iraq')
-	plt.plot(mean_topic_con_nmf[188], label = 'Budget')
-	plt.plot(mean_topic_con_nmf[205], label = 'Katrina')
-	plt.plot(mean_topic_con_nmf[214], label = 'STEM')
-	plt.plot(mean_topic_con_nmf[220], label = 'Internet')
-	plt.plot(mean_topic_con_nmf[277], label = 'Greenhouse')
-	plt.plot(mean_topic_con_nmf[286], label = 'Care')
+	plt.bar(np.arange(12), mean_topic_con_nmf[110], label = 'Terror', color = 'b')
+	plt.bar(np.arange(12), mean_topic_con_nmf[76], label = 'Iraq', color = 'g')
+	plt.bar(np.arange(12), mean_topic_con_nmf[188], label = 'Budget', color = 'r')
+	plt.bar(np.arange(12), mean_topic_con_nmf[205], label = 'Katrina', color = 'c')
+	#plt.plot(mean_topic_con_nmf[214], label = 'STEM')
+	#plt.plot(mean_topic_con_nmf[220], label = 'Internet')
+	plt.bar(np.arange(12), mean_topic_con_nmf[277], label = 'Greenhouse', color = 'm')
+	plt.bar(np.arange(12), mean_topic_con_nmf[286], label = 'Care', color = 'y')
 	con = ['1993', '1995', '1997', '1999', '2001', '2003', '2005', '2007', '2009', '2011', '2013', '2015']
 	#plt.title('Topics by Congress/Year')
 	plt.xlabel('Congress/Year')
 	plt.ylabel('Prevalence')
 	ax = plt.gca()
-	ax.set_xticks([0,1,2,3,4,5,6,7,8,9,10,11])
+	ax.set_xticks(np.arange(12))
 	ax.set_xticklabels(con)
 	# create a second figure for the legend
 	figLegend = plt.figure(figsize = (1.5,1.3))
 	# produce a legend for the objects in the other figure
 	plt.figlegend(*ax.get_legend_handles_labels(), loc = 'upper left', ncol = 3, mode="expand")	
+	plt.show()
+
+
+def plot_multi_topics(mean_topic_con_nmf):
+	'''Plots different topics on the same graph witha separate legend'''
+
+	with plt.style.context('fivethirtyeight'):
+		plt.plot(mean_topic_con_nmf[110], label = 'Terror', color = 'b')
+		plt.plot(mean_topic_con_nmf[76], label = 'Iraq', color = 'g')
+		plt.plot(mean_topic_con_nmf[188], label = 'Budget', color = 'r')
+		plt.plot(mean_topic_con_nmf[205], label = 'Katrina', color = 'c')
+		#plt.plot(mean_topic_con_nmf[214], label = 'STEM', color = 'm')
+		#plt.plot(mean_topic_con_nmf[220], label = 'Internet', color = 'y')
+		plt.plot(np.arange(12), mean_topic_con_nmf[277], label = 'Greenhouse', color = 'k')
+		plt.plot(np.arange(12), mean_topic_con_nmf[286], label = 'Care', color = 'mediumspringgreen')
+		con = ['1993', '1995', '1997', '1999', '2001', '2003', '2005', '2007', '2009', '2011', '2013', '2015']
+		#plt.title('Topics by Congress/Year')
+		plt.xlabel('Congress/Year')
+		plt.ylabel('Prevalence')
+		ax = plt.gca()
+		ax.set_xticks(np.arange(12))
+		ax.set_xticklabels(con)
+		# create a second figure for the legend
+		figLegend = plt.figure(figsize = (1.5,1.3))
+		# produce a legend for the objects in the other figure
+		plt.figlegend(*ax.get_legend_handles_labels(), loc = 'upper left', ncol = 3, mode="expand")	
 	plt.show()
 
 
@@ -317,9 +343,13 @@ if __name__ == '__main__':
     ntopic_pur_list = topic_purity_maximizer(tfidf, tfidf_vectorizer)
     #tf = joblib.load('bills_tf_sparse.pkl')
     #tf_vectorizer = joblib.load('tf_vectorizer.pkl')
+    W = joblib.load('W_300_full.pkl')
+    nmf = joblib.load('nmf_300_full.pkl')
+    nmf_topic_dict = joblib.load('nmf_topic_dict_300_full.pkl')
     nmf, nmf_topic_dict = fit_nmf(tfidf, n_topics, tfidf_vectorizer)
+    H = nmf.components_ 
     #lda, lda_topic_dict = fit_lda(tf)
-	H, W, mean_topic_con_nmf = get_H_W(nmf, tfidf)
+	mean_topic_con_nmf = get_H_W(nmf, tfidf)
 	reverse_lookup = {word: idx for idx, word in enumerate(np.array(tfidf_vectorizer.get_feature_names()))}
 	average_coherence_k = run_topic_coherence(tfidf, reverse_lookup)
 	avg_d_k_H_525 = parallel_run_cos_H(range(205,525,5))
